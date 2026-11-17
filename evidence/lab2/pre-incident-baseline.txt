@@ -1,0 +1,270 @@
+DGDB Lab 2 — pre-incident baseline
+==================================
+
+Record prepared: 13 November 2026
+Purpose: preserve the known state before a controlled datafile recovery exercise.
+Provenance: prior lab records and user-supplied SQL*Plus and RMAN output. No database
+queries or RMAN commands were executed by this documentation review. The
+SQL*Plus checks below were supplied by the user; their exact individual query
+times were not captured.
+
+Database and file identity (previously recorded)
+-------------------------------------------------
+CDB: FREE
+Application PDB: FREEPDB1
+Schema: DGDB
+Tablespace: DGDB_DATA
+Datafile number: 17
+Datafile path: /opt/oracle/oradata/FREE/FREEPDB1/dgdb_data01.dbf
+
+Populated workload (Oracle verification reported for 13 November 2026)
+-----------------------------------------------------------------------
+Orders: 12 total — FULFILLED 6, PAID 2, PENDING 2, CANCELLED 1, EXPIRED 1.
+Payments: 9 total — SUCCEEDED 8, FAILED 1.
+Order-total discrepancies: 0.
+Physical stock reconciliation discrepancies: 0.
+Reserved stock reconciliation discrepancies: 0.
+The two PENDING checkout holds were time-limited; their expiry timestamps
+should be inspected again at incident time. An elapsed timestamp alone does
+not change a reservation's stored status.
+
+Recovery reference (earlier RMAN baseline, 13 November 2026)
+-------------------------------------------------------------
+Backup tag: DGDB_L2_BASELINE
+Datafile 17 backup set: 19
+Datafile 17 checkpoint SCN: 3381958
+Archived redo backup sets: 17 (sequences 1–13), 21 (sequence 14).
+Sequence 14 recorded SCN range: 3381912 through 3381965 exclusive.
+The full RMAN backup was taken after the transaction seed completed on
+13 November 2026. Restoring datafile 17 from that backup alone does not
+necessarily establish a consistent recovered database; required redo may
+still need to be applied through an appropriate recovery point.
+See runbooks/oracle/dgdb-rman-baseline.md for backup pieces and validation scope.
+
+Archived-log validation — 17 November 2026 (user-supplied RMAN output)
+--------------------------------------------------------------------
+Command: VALIDATE ARCHIVELOG ALL;
+RMAN used channel ORA_DISK_1 and completed validation in 00:00:07.
+The output listed local archived logs for thread 1, sequences 1 through 26.
+Every listed sequence had status OK and 0 failing blocks. The listed files
+were under /opt/oracle/oradata/archivelogs/; sequence 1 used the filename
+arch1_1_1238104578.dbf and sequences 2-26 used 1_<sequence>_1238104578.dbf.
+This validates the local archived-log files selected by RMAN on 17 November.
+It does not by itself validate archived-redo backup pieces, prove every log
+needed for a chosen recovery point is present, or establish availability at
+the later incident time. The 13 November backup observations above remain
+separate from this later check.
+
+Seq  Status  Failing blocks  Blocks examined
+---  ------  --------------  ---------------
+ 1   OK                   0           132418
+ 2   OK                   0            55511
+ 3   OK                   0            79729
+ 4   OK                   0               21
+ 5   OK                   0            92079
+ 6   OK                   0               16
+ 7   OK                   0            21719
+ 8   OK                   0           353398
+ 9   OK                   0           355180
+10   OK                   0           389207
+11   OK                   0           374864
+12   OK                   0           367149
+13   OK                   0           196574
+14   OK                   0               33
+15   OK                   0           383158
+16   OK                   0           369268
+17   OK                   0           400566
+18   OK                   0           396717
+19   OK                   0           400565
+20   OK                   0           355415
+21   OK                   0           400566
+22   OK                   0           400566
+23   OK                   0           359350
+24   OK                   0           366604
+25   OK                   0           397450
+26   OK                   0           355660
+
+Pre-incident SQL*Plus capture — user supplied
+---------------------------------------------
+Database timestamp shown: 13-NOV-26 05.27.23.492656 PM +00:00.
+Session timestamp shown: 13-NOV-26 05.27.23.492672 PM +00:00.
+Session and database time zones: +00:00. This timestamp was queried after
+the SCN and segment checks; it is not their exact capture time.
+Container: FREEPDB1. Connected user: SYSDBA
+Current database SCN at query time: 3404800.
+Datafile 17: /opt/oracle/oradata/FREE/FREEPDB1/dgdb_data01.dbf.
+DBA_DATA_FILES status: AVAILABLE. V$DATAFILE control-file status: ONLINE;
+SQL access: READ WRITE; control-file checkpoint SCN: 3381965.
+V$DATAFILE_HEADER status: ONLINE; header checkpoint SCN: 3381965;
+header error: blank in the supplied output.
+DGDB_DATA segments: DGDB owns 26 allocated segments, 1.63 MB rounded;
+18 INDEX segments (1,179,648 bytes) and 8 TABLE segments (524,288 bytes).
+The DBRE_LAB / DBRE_APP query in the raw transcript concerns Lab 1, not DGDB.
+Current seed order counts: 12 total — FULFILLED 6, PAID 2, PENDING 2,
+CANCELLED 1, EXPIRED 1 (fresh user-supplied SQL*Plus output).
+Current seed payment counts: 9 total — SUCCEEDED 8, FAILED 1
+(fresh user-supplied SQL*Plus output).
+Current order-total reconciliation query output: [not captured]
+Physical and reserved-stock reconciliation: both queries below returned
+"no rows selected" in user-supplied SQL*Plus output. Exact query time: [not captured]
+Backup and archived redo availability at incident time: [not captured]
+
+Pre-incident stock reconciliation — user-supplied SQL*Plus results
+-----------------------------------------------------------------
+Physical inventory versus stock-movement ledger:
+SELECT p.sku,
+       i.on_hand_qty,
+       NVL(SUM(sm.quantity_delta), 0) AS ledger_qty
+FROM products p
+JOIN inventory i ON i.product_id = p.product_id
+LEFT JOIN stock_movements sm ON sm.product_id = p.product_id
+GROUP BY p.sku, i.on_hand_qty
+HAVING i.on_hand_qty <> NVL(SUM(sm.quantity_delta), 0)
+ORDER BY p.sku;
+Result: no rows selected.
+
+Reserved inventory versus active CHECKOUT and ALLOCATED reservations:
+SELECT p.sku,
+       i.reserved_qty,
+       NVL(SUM(CASE
+                 WHEN r.status IN ('CHECKOUT', 'ALLOCATED')
+                 THEN r.quantity
+                 ELSE 0
+               END), 0) AS allocation_qty
+FROM products p
+JOIN inventory i ON i.product_id = p.product_id
+LEFT JOIN reservations r ON r.product_id = p.product_id
+GROUP BY p.sku, i.reserved_qty
+HAVING i.reserved_qty <> NVL(SUM(CASE
+                                  WHEN r.status IN ('CHECKOUT', 'ALLOCATED')
+                                  THEN r.quantity
+                                  ELSE 0
+                                END), 0)
+ORDER BY p.sku;
+Result: no rows selected.
+
+Pre-incident order, payment, and pending-hold checks — user supplied
+-------------------------------------------------------------------
+SELECT status, COUNT(*) AS order_count
+FROM orders
+WHERE order_number BETWEEN 'DG-L2-001' AND 'DG-L2-012'
+GROUP BY status
+ORDER BY status;
+Result: CANCELLED 1; EXPIRED 1; FULFILLED 6; PAID 2; PENDING 2.
+
+SELECT p.status, COUNT(*) AS payment_count
+FROM payments p
+JOIN orders o ON o.order_id = p.order_id
+WHERE o.order_number BETWEEN 'DG-L2-001' AND 'DG-L2-012'
+GROUP BY p.status
+ORDER BY p.status;
+Result: FAILED 1; SUCCEEDED 8.
+
+SELECT o.order_number,
+       o.status AS order_status,
+       r.status AS reservation_status,
+       r.expires_at,
+       CASE WHEN r.expires_at <= SYSTIMESTAMP
+            THEN 'EXPIRED BY TIME' ELSE 'STILL VALID' END AS time_status
+FROM dgdb.orders o
+JOIN dgdb.reservations r ON r.order_id = o.order_id
+WHERE o.status = 'PENDING'
+ORDER BY o.order_number;
+Result: DG-L2-009 and DG-L2-010 each remained PENDING / CHECKOUT,
+with expires_at 13-NOV-26 10.50.33.883704 AM +00:00 and time status
+EXPIRED BY TIME. The expiry deadline had passed at query time, but no
+stored expiry transition had occurred. Exact query time: [not captured]
+
+Suggested read-only identity checks in FREEPDB1:
+  SELECT SYS_CONTEXT('USERENV','CON_NAME') AS con_name FROM dual;
+  SELECT current_scn FROM v$database;
+  SELECT file_id, file_name, tablespace_name, status
+    FROM dba_data_files WHERE tablespace_name = 'DGDB_DATA';
+  SELECT owner, segment_type, COUNT(*) AS segments, SUM(bytes) AS bytes
+    FROM dba_segments WHERE tablespace_name = 'DGDB_DATA'
+    GROUP BY owner, segment_type ORDER BY owner, segment_type;
+
+Raw output / capture notes:
+The following transcript was already present in this file. The later time and
+datafile-header query results supplied in chat are summarized above.
+SQL> -- Schemas that own allocated segments in DGDB_DATA.
+SELECT owner, COUNT(*) AS segment_count,
+       ROUND(SUM(bytes)/1024/1024, 2) AS allocated_mb
+FROM dba_segments
+WHERE tablespace_name = 'DGDB_DATA'
+GROUP BY owner
+ORDER BY owner;SQL>   2    3    4    5    6
+
+OWNER
+--------------------------------------------------------------------------------
+SEGMENT_COUNT ALLOCATED_MB
+------------- ------------
+DGDB
+           26         1.63
+
+
+SQL> edit
+Wrote file afiedt.buf
+
+  1  SELECT owner, COUNT(*) AS segment_count,
+  2         ROUND(SUM(bytes)/1024/1024, 2) AS allocated_mb
+  3  FROM dba_segments
+  4  WHERE tablespace_name = 'DBRE_LAB'
+  5  GROUP BY owner
+  6* ORDER BY owner
+SQL>
+SQL> /
+
+OWNER
+--------------------------------------------------------------------------------
+SEGMENT_COUNT ALLOCATED_MB
+------------- ------------
+DBRE_APP
+            2          .13
+
+
+SQL>
+SQL>
+SQL>
+SQL> SELECT SYS_CONTEXT('USERENV','CON_NAME') AS con_name FROM dual;
+
+CON_NAME
+--------------------------------------------------------------------------------
+FREEPDB1
+
+SQL> SELECT current_scn FROM v$database;
+
+CURRENT_SCN
+-----------
+    3404800
+
+SQL> SELECT file_id, file_name, tablespace_name, status
+    FROM dba_data_files WHERE tablespace_name = 'DGDB_DATA';  2
+
+   FILE_ID
+----------
+FILE_NAME
+--------------------------------------------------------------------------------
+TABLESPACE_NAME                STATUS
+------------------------------ ---------
+        17
+/opt/oracle/oradata/FREE/FREEPDB1/dgdb_data01.dbf
+DGDB_DATA                      AVAILABLE
+
+
+SQL>   SELECT owner, segment_type, COUNT(*) AS segments, SUM(bytes) AS bytes
+    FROM dba_segments WHERE tablespace_name = 'DGDB_DATA'
+    GROUP BY owner, segment_type ORDER BY owner, segment_type;  2    3
+
+OWNER
+--------------------------------------------------------------------------------
+SEGMENT_TYPE         SEGMENTS      BYTES
+------------------ ---------- ----------
+DGDB
+INDEX                      18    1179648
+
+DGDB
+TABLE                       8     524288
+
+
+SQL>
