@@ -254,3 +254,13 @@ Finished recover at 17-NOV-26
 
 
 RMAN>
+
+Shell excerpt — file-loss simulation (copied from my session output)
+-------------------------------------------------------------------
+This excerpt was shared separately from the RMAN transcript. It records the
+rename and immediate existence check; no later listing of the renamed file
+was captured here.
+
+sh-4.4$ mv /opt/oracle/oradata/FREE/FREEPDB1/dgdb_data01.dbf /opt/oracle/oradata/FREE/FREEPDB1/offline_dgdb_data01.dbf
+sh-4.4$ ls /opt/oracle/oradata/FREE/FREEPDB1/offline_dgdb_data01.dbf
+/opt/oracle/oradata/FREE/FREEPDB1/offline_dgdb_data01.dbf

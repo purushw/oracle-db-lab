@@ -33,5 +33,4 @@ I restored and recovered the missing datafile, then brought the tablespace onlin
 
 - [Pre-incident integrity](../evidence/lab2/pre-incident-integrity-2026-11-17.txt): table counts, stock reconciliations, order/payment states, SCN, and Docker mount output.
 - [Post-recovery integrity](../evidence/lab2/dgdb-post-recovery-integrity.txt): SQL*Plus offline/error, online status, and post-recovery checks.
-- [RMAN recovery transcript](../evidence/lab2/rman-recovery-transcript.txt): restore piece, archived-log listing, and completed media recovery.
-- My shell `mv` and confirming `ls` output, provided separately in the conversation; it is not in the three linked files.
+- [RMAN recovery transcript](../evidence/lab2/rman-recovery-transcript.txt): restore piece, archived-log listing, completed media recovery, and a separately labeled excerpt of my shell `mv` and confirming `ls` output.
