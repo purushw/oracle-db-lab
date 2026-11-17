@@ -1,0 +1,189 @@
+sho user
+USER is "SYS"
+SQL>
+SQL>
+SQL>
+SQL> sho con_name
+
+CON_NAME
+------------------------------
+FREEPDB1
+SQL>
+SQL>
+SQL> ALTER TABLESPACE DGDB_DATA OFFLINE IMMEDIATE;
+
+Tablespace altered.
+
+SQL> SELECT 'PRODUCTS' table_name, COUNT(*) row_count FROM dgdb.products
+UNION ALL
+SELECT 'CUSTOMERS', COUNT(*) FROM dgdb.customers
+UNION ALL
+SELECT 'INVENTORY', COUNT(*) FROM dgdb.inventory
+UNION ALL
+SELECT 'ORDERS', COUNT(*) FROM dgdb.orders
+UNION ALL
+SELECT 'ORDER_ITEMS', COUNT(*) FROM dgdb.order_items
+UNION ALL
+SELECT 'RESERVATIONS', COUNT(*) FROM dgdb.reservations
+UNION ALL
+SELECT 'PAYMENTS', COUNT(*) FROM dgdb.payments
+UNION ALL
+SELECT 'STOCK_MOVEMENTS', COUNT(*) FROM dgdb.stock_movements;  2    3    4    5    6    7    8    9   10   11   12   13   14   15
+SELECT 'PRODUCTS' table_name, COUNT(*) row_count FROM dgdb.products
+*
+ERROR at line 1:
+ORA-00376: file 17 cannot be read at this time
+ORA-01110: data file 17: '/opt/oracle/oradata/FREE/FREEPDB1/dgdb_data01.dbf'
+Help: https://docs.oracle.com/error-help/db/ora-00376/
+
+
+SQL>
+SQL>
+SQL>
+SQL> SHOW CON_NAME;
+
+CON_NAME
+------------------------------
+FREEPDB1
+SQL> ALTER TABLESPACE DGDB_DATA ONLINE;
+
+Tablespace altered.
+
+SQL> SELECT tablespace_name, status
+FROM dba_tablespaces
+WHERE tablespace_name = 'DGDB_DATA';  2    3
+
+TABLESPACE_NAME 	       STATUS
+------------------------------ ---------
+DGDB_DATA		       ONLINE
+
+SQL> SELECT file_id, status, online_status
+FROM dba_data_files
+WHERE tablespace_name = 'DGDB_DATA';  2    3
+
+   FILE_ID STATUS    ONLINE_
+---------- --------- -------
+	17 AVAILABLE ONLINE
+
+SQL>
+SQL>
+SQL> SELECT COUNT(*) FROM dgdb.products;
+
+  COUNT(*)
+----------
+	40
+
+SQL> SPOOL dgdb-post-recovery-integrity.log
+SQL> SELECT 'PRODUCTS' table_name, COUNT(*) row_count FROM dgdb.products
+UNION ALL
+SELECT 'CUSTOMERS', COUNT(*) FROM dgdb.customers
+UNION ALL
+SELECT 'INVENTORY', COUNT(*) FROM dgdb.inventory
+UNION ALL
+SELECT 'ORDERS', COUNT(*) FROM dgdb.orders
+UNION ALL
+SELECT 'ORDER_ITEMS', COUNT(*) FROM dgdb.order_items
+UNION ALL
+SELECT 'RESERVATIONS', COUNT(*) FROM dgdb.reservations
+UNION ALL
+SELECT 'PAYMENTS', COUNT(*) FROM dgdb.payments
+UNION ALL
+SELECT 'STOCK_MOVEMENTS', COUNT(*) FROM dgdb.stock_movements;  2    3    4    5    6    7    8    9   10   11   12   13   14   15
+
+TABLE_NAME	 ROW_COUNT
+--------------- ----------
+PRODUCTS		40
+CUSTOMERS		50
+INVENTORY		40
+ORDERS			12
+ORDER_ITEMS		12
+RESERVATIONS		12
+PAYMENTS		 9
+STOCK_MOVEMENTS 	46
+
+8 rows selected.
+
+SQL> SELECT p.sku,
+       i.on_hand_qty,
+       NVL(SUM(sm.quantity_delta), 0) AS ledger_qty
+FROM dgdb.products p
+JOIN dgdb.inventory i ON i.product_id = p.product_id
+LEFT JOIN dgdb.stock_movements sm
+       ON sm.product_id = p.product_id
+GROUP BY p.sku, i.on_hand_qty
+HAVING i.on_hand_qty <> NVL(SUM(sm.quantity_delta), 0)
+ORDER BY p.sku;    2    3    4    5    6    7    8    9   10
+
+no rows selected
+
+SQL> SELECT p.sku,
+       i.reserved_qty,
+       NVL(SUM(CASE
+           WHEN r.status IN ('CHECKOUT', 'ALLOCATED')
+           THEN r.quantity ELSE 0
+       END), 0) AS allocation_qty
+FROM dgdb.products p
+JOIN dgdb.inventory i ON i.product_id = p.product_id
+LEFT JOIN dgdb.reservations r
+       ON r.product_id = p.product_id
+GROUP BY p.sku, i.reserved_qty
+HAVING i.reserved_qty <> NVL(SUM(CASE
+           WHEN r.status IN ('CHECKOUT', 'ALLOCATED')
+           THEN r.quantity ELSE 0
+       END), 0)
+ORDER BY p.sku;  2    3    4    5    6    7    8    9   10   11   12   13   14   15   16
+
+no rows selected
+
+SQL> SELECT status, COUNT(*)
+FROM dgdb.orders
+GROUP BY status
+ORDER BY status;  2    3    4
+
+STATUS		       COUNT(*)
+-------------------- ----------
+CANCELLED		      1
+EXPIRED 		      1
+FULFILLED		      6
+PAID			      2
+PENDING 		      2
+
+SQL> SELECT status, COUNT(*)
+FROM dgdb.payments
+GROUP BY status
+ORDER BY status;  2    3    4
+
+STATUS	       COUNT(*)
+------------ ----------
+FAILED		      1
+SUCCEEDED	      8
+
+SQL> SELECT SYSTIMESTAMP AS verified_at, current_scn
+FROM v$database;  2
+
+VERIFIED_AT								    CURRENT_SCN
+--------------------------------------------------------------------------- -----------
+17-NOV-26 12.19.18.317341 PM +00:00						4219453
+
+SQL> spool off
+SQL>
+
+Pre- versus post-recovery comparison
+Check	Before	After	Result
+Products	40	40	
+Customers	50	50	
+Inventory	40	40	
+Orders	12	12	
+Order items	12	12	
+Reservations	12	12	
+Payments	9	9	
+Stock movements	46	46	
+Physical inventory discrepancies	0	0	
+Reserved inventory discrepancies	0	0	
+
+Order and payment status distributions also match exactly.
+PRE-INCIDENT SCN
+4,216,261
+
+POST-RECOVERY SCN
+4,219,453

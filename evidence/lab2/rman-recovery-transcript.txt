@@ -1,0 +1,256 @@
+RMAN> LIST ARCHIVELOG ALL;
+LIST ARCHIVELOG ALL;
+List of Archived Log Copies for database with db_unique_name FREE
+=====================================================================
+
+Key     Thrd Seq     S Low Time
+------- ---- ------- - ---------
+3       1    1       A 08-JUL-26
+        Name: /opt/oracle/oradata/archivelogs/arch1_1_1238104578.dbf
+
+1       1    1       A 08-JUL-26
+        Name: /opt/oracle/product/26ai/dbhomeFree/dbs/arch1_1_1238104578.dbf
+
+2       1    2       A 06-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_2_1238104578.dbf
+
+4       1    3       A 06-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_3_1238104578.dbf
+
+5       1    4       A 09-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_4_1238104578.dbf
+
+6       1    5       A 09-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_5_1238104578.dbf
+
+7       1    6       A 09-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_6_1238104578.dbf
+
+8       1    7       A 09-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_7_1238104578.dbf
+
+9       1    8       A 09-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_8_1238104578.dbf
+
+10      1    9       A 09-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_9_1238104578.dbf
+
+11      1    10      A 10-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_10_1238104578.dbf
+
+12      1    11      A 10-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_11_1238104578.dbf
+
+13      1    12      A 12-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_12_1238104578.dbf
+
+14      1    13      A 13-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_13_1238104578.dbf
+
+15      1    14      A 13-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_14_1238104578.dbf
+
+16      1    15      A 13-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_15_1238104578.dbf
+
+17      1    16      A 13-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_16_1238104578.dbf
+
+18      1    17      A 14-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_17_1238104578.dbf
+
+19      1    18      A 14-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_18_1238104578.dbf
+
+20      1    19      A 14-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_19_1238104578.dbf
+
+21      1    20      A 15-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_20_1238104578.dbf
+
+22      1    21      A 15-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_21_1238104578.dbf
+
+23      1    22      A 15-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_22_1238104578.dbf
+
+24      1    23      A 15-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_23_1238104578.dbf
+
+25      1    24      A 16-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_24_1238104578.dbf
+
+26      1    25      A 16-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_25_1238104578.dbf
+
+27      1    26      A 16-NOV-26
+        Name: /opt/oracle/oradata/archivelogs/1_26_1238104578.dbf
+
+
+
+RMAN> VALIDATE ARCHIVELOG ALL;
+VALIDATE ARCHIVELOG ALL;
+Starting validate at 17-NOV-26
+using channel ORA_DISK_1
+channel ORA_DISK_1: starting validation of archived log
+channel ORA_DISK_1: specifying archived log(s) for validation
+input archived log thread=1 sequence=1 RECID=3 STAMP=1248881543
+input archived log thread=1 sequence=2 RECID=2 STAMP=1248630194
+input archived log thread=1 sequence=3 RECID=4 STAMP=1248882062
+input archived log thread=1 sequence=4 RECID=5 STAMP=1248882070
+input archived log thread=1 sequence=5 RECID=6 STAMP=1248893941
+input archived log thread=1 sequence=6 RECID=7 STAMP=1248893949
+input archived log thread=1 sequence=7 RECID=8 STAMP=1248894684
+input archived log thread=1 sequence=8 RECID=9 STAMP=1248907904
+input archived log thread=1 sequence=9 RECID=10 STAMP=1248944486
+input archived log thread=1 sequence=10 RECID=11 STAMP=1248991206
+input archived log thread=1 sequence=11 RECID=12 STAMP=1249160430
+input archived log thread=1 sequence=12 RECID=13 STAMP=1249197776
+input archived log thread=1 sequence=13 RECID=14 STAMP=1249217776
+input archived log thread=1 sequence=14 RECID=15 STAMP=1249217785
+input archived log thread=1 sequence=15 RECID=16 STAMP=1249250416
+input archived log thread=1 sequence=16 RECID=17 STAMP=1249283126
+input archived log thread=1 sequence=17 RECID=18 STAMP=1249308009
+input archived log thread=1 sequence=18 RECID=19 STAMP=1249328820
+input archived log thread=1 sequence=19 RECID=20 STAMP=1249350287
+input archived log thread=1 sequence=20 RECID=21 STAMP=1249375118
+input archived log thread=1 sequence=21 RECID=22 STAMP=1249394409
+input archived log thread=1 sequence=22 RECID=23 STAMP=1249409363
+input archived log thread=1 sequence=23 RECID=24 STAMP=1249432780
+input archived log thread=1 sequence=24 RECID=25 STAMP=1249470059
+input archived log thread=1 sequence=25 RECID=26 STAMP=1249509833
+input archived log thread=1 sequence=26 RECID=27 STAMP=1249538644
+channel ORA_DISK_1: validation complete, elapsed time: 00:00:07
+List of Archived Logs
+=====================
+Thrd Seq     Status Blocks Failing Blocks Examined Name
+---- ------- ------ -------------- --------------- ---------------
+1    1       OK     0              132418          /opt/oracle/oradata/archivelogs/arch1_1_1238104578.dbf
+1    2       OK     0              55511           /opt/oracle/oradata/archivelogs/1_2_1238104578.dbf
+1    3       OK     0              79729           /opt/oracle/oradata/archivelogs/1_3_1238104578.dbf
+1    4       OK     0              21              /opt/oracle/oradata/archivelogs/1_4_1238104578.dbf
+1    5       OK     0              92079           /opt/oracle/oradata/archivelogs/1_5_1238104578.dbf
+1    6       OK     0              16              /opt/oracle/oradata/archivelogs/1_6_1238104578.dbf
+1    7       OK     0              21719           /opt/oracle/oradata/archivelogs/1_7_1238104578.dbf
+1    8       OK     0              353398          /opt/oracle/oradata/archivelogs/1_8_1238104578.dbf
+1    9       OK     0              355180          /opt/oracle/oradata/archivelogs/1_9_1238104578.dbf
+1    10      OK     0              389207          /opt/oracle/oradata/archivelogs/1_10_1238104578.dbf
+1    11      OK     0              374864          /opt/oracle/oradata/archivelogs/1_11_1238104578.dbf
+1    12      OK     0              367149          /opt/oracle/oradata/archivelogs/1_12_1238104578.dbf
+1    13      OK     0              196574          /opt/oracle/oradata/archivelogs/1_13_1238104578.dbf
+1    14      OK     0              33              /opt/oracle/oradata/archivelogs/1_14_1238104578.dbf
+1    15      OK     0              383158          /opt/oracle/oradata/archivelogs/1_15_1238104578.dbf
+1    16      OK     0              369268          /opt/oracle/oradata/archivelogs/1_16_1238104578.dbf
+1    17      OK     0              400566          /opt/oracle/oradata/archivelogs/1_17_1238104578.dbf
+1    18      OK     0              396717          /opt/oracle/oradata/archivelogs/1_18_1238104578.dbf
+1    19      OK     0              400565          /opt/oracle/oradata/archivelogs/1_19_1238104578.dbf
+1    20      OK     0              355415          /opt/oracle/oradata/archivelogs/1_20_1238104578.dbf
+1    21      OK     0              400566          /opt/oracle/oradata/archivelogs/1_21_1238104578.dbf
+1    22      OK     0              400566          /opt/oracle/oradata/archivelogs/1_22_1238104578.dbf
+1    23      OK     0              359350          /opt/oracle/oradata/archivelogs/1_23_1238104578.dbf
+1    24      OK     0              366604          /opt/oracle/oradata/archivelogs/1_24_1238104578.dbf
+1    25      OK     0              397450          /opt/oracle/oradata/archivelogs/1_25_1238104578.dbf
+1    26      OK     0              355660          /opt/oracle/oradata/archivelogs/1_26_1238104578.dbf
+Finished validate at 17-NOV-26
+
+
+
+
+RMAN> REPORT SCHEMA;
+REPORT SCHEMA;
+Report of database schema for database with db_unique_name FREE
+
+List of Permanent Datafiles
+===========================
+File Size(MB) Tablespace           RB segs Datafile Name
+---- -------- -------------------- ------- ------------------------
+1    1110     SYSTEM               YES     /opt/oracle/oradata/FREE/system01.dbf
+2    290      PDB$SEED:SYSTEM      NO      /opt/oracle/oradata/FREE/pdbseed/system01.dbf
+3    1060     SYSAUX               NO      /opt/oracle/oradata/FREE/sysaux01.dbf
+4    400      PDB$SEED:SYSAUX      NO      /opt/oracle/oradata/FREE/pdbseed/sysaux01.dbf
+7    7        USERS                NO      /opt/oracle/oradata/FREE/users01.dbf
+9    100      PDB$SEED:UNDOTBS1    NO      /opt/oracle/oradata/FREE/pdbseed/undotbs01.dbf
+11   50       UNDOTBS1             YES     /opt/oracle/oradata/FREE/undotbs01.dbf
+12   320      FREEPDB1:SYSTEM      YES     /opt/oracle/oradata/FREE/FREEPDB1/system01.dbf
+13   720      FREEPDB1:SYSAUX      NO      /opt/oracle/oradata/FREE/FREEPDB1/sysaux01.dbf
+14   100      FREEPDB1:UNDOTBS1    YES     /opt/oracle/oradata/FREE/FREEPDB1/undotbs01.dbf
+15   7        FREEPDB1:USERS       NO      /opt/oracle/oradata/FREE/FREEPDB1/users01.dbf
+16   100      FREEPDB1:DBRE_LAB    NO      /opt/oracle/oradata/FREE/FREEPDB1/dbre_lab01.dbf
+17   0        FREEPDB1:DGDB_DATA   NO      /opt/oracle/oradata/FREE/FREEPDB1/dgdb_data01.dbf
+
+List of Temporary Files
+=======================
+File Size(MB) Tablespace           Maxsize(MB) Tempfile Name
+---- -------- -------------------- ----------- --------------------
+1    20       TEMP                 32767       /opt/oracle/oradata/FREE/temp01.dbf
+2    20       PDB$SEED:TEMP        32767       /opt/oracle/oradata/FREE/pdbseed/temp01.dbf
+3    20       FREEPDB1:TEMP        32767       /opt/oracle/oradata/FREE/FREEPDB1/temp01.dbf
+
+
+RMAN> RESTORE DATAFILE 17;
+RESTORE DATAFILE 17;
+Starting restore at 17-NOV-26
+using channel ORA_DISK_1
+
+channel ORA_DISK_1: starting datafile backup set restore
+channel ORA_DISK_1: specifying datafile(s) to restore from backup set
+channel ORA_DISK_1: restoring datafile 00017 to /opt/oracle/oradata/FREE/FREEPDB1/dgdb_data01.dbf
+channel ORA_DISK_1: reading from backup piece /opt/oracle/backups/dgdb_l2_0jn7237n_19_1_1
+channel ORA_DISK_1: piece handle=/opt/oracle/backups/dgdb_l2_0jn7237n_19_1_1 tag=DGDB_L2_BASELINE
+channel ORA_DISK_1: restored backup piece 1
+channel ORA_DISK_1: restore complete, elapsed time: 00:00:01
+Finished restore at 17-NOV-26
+
+
+RMAN>
+
+
+RMAN>
+
+RMAN> RECOVER DATAFILE 17;
+RECOVER DATAFILE 17;
+Starting recover at 17-NOV-26
+using channel ORA_DISK_1
+
+starting media recovery
+
+archived log for thread 1 with sequence 14 is already on disk as file /opt/oracle/oradata/archivelogs/1_14_1238104578.dbf
+archived log for thread 1 with sequence 15 is already on disk as file /opt/oracle/oradata/archivelogs/1_15_1238104578.dbf
+archived log for thread 1 with sequence 16 is already on disk as file /opt/oracle/oradata/archivelogs/1_16_1238104578.dbf
+archived log for thread 1 with sequence 17 is already on disk as file /opt/oracle/oradata/archivelogs/1_17_1238104578.dbf
+archived log for thread 1 with sequence 18 is already on disk as file /opt/oracle/oradata/archivelogs/1_18_1238104578.dbf
+archived log for thread 1 with sequence 19 is already on disk as file /opt/oracle/oradata/archivelogs/1_19_1238104578.dbf
+archived log for thread 1 with sequence 20 is already on disk as file /opt/oracle/oradata/archivelogs/1_20_1238104578.dbf
+archived log for thread 1 with sequence 21 is already on disk as file /opt/oracle/oradata/archivelogs/1_21_1238104578.dbf
+archived log for thread 1 with sequence 22 is already on disk as file /opt/oracle/oradata/archivelogs/1_22_1238104578.dbf
+archived log for thread 1 with sequence 23 is already on disk as file /opt/oracle/oradata/archivelogs/1_23_1238104578.dbf
+archived log for thread 1 with sequence 24 is already on disk as file /opt/oracle/oradata/archivelogs/1_24_1238104578.dbf
+archived log for thread 1 with sequence 25 is already on disk as file /opt/oracle/oradata/archivelogs/1_25_1238104578.dbf
+archived log for thread 1 with sequence 26 is already on disk as file /opt/oracle/oradata/archivelogs/1_26_1238104578.dbf
+recovery status time_needed 2026-11-13 12:56:23
+archived log file name=/opt/oracle/oradata/archivelogs/1_14_1238104578.dbf thread=1 sequence=14
+recovery status time_needed 2026-11-13 12:56:25
+archived log file name=/opt/oracle/oradata/archivelogs/1_15_1238104578.dbf thread=1 sequence=15
+recovery status time_needed 2026-11-13 22:00:15
+archived log file name=/opt/oracle/oradata/archivelogs/1_16_1238104578.dbf thread=1 sequence=16
+recovery status time_needed 2026-11-14 07:05:25
+archived log file name=/opt/oracle/oradata/archivelogs/1_17_1238104578.dbf thread=1 sequence=17
+recovery status time_needed 2026-11-14 14:00:08
+archived log file name=/opt/oracle/oradata/archivelogs/1_18_1238104578.dbf thread=1 sequence=18
+recovery status time_needed 2026-11-14 19:46:59
+archived log file name=/opt/oracle/oradata/archivelogs/1_19_1238104578.dbf thread=1 sequence=19
+recovery status time_needed 2026-11-15 01:41:34
+archived log file name=/opt/oracle/oradata/archivelogs/1_20_1238104578.dbf thread=1 sequence=20
+recovery status time_needed 2026-11-15 08:38:37
+archived log file name=/opt/oracle/oradata/archivelogs/1_21_1238104578.dbf thread=1 sequence=21
+recovery status time_needed 2026-11-15 14:00:09
+archived log file name=/opt/oracle/oradata/archivelogs/1_22_1238104578.dbf thread=1 sequence=22
+recovery status time_needed 2026-11-15 18:09:23
+archived log file name=/opt/oracle/oradata/archivelogs/1_23_1238104578.dbf thread=1 sequence=23
+recovery status time_needed 2026-11-16 00:39:38
+archived log file name=/opt/oracle/oradata/archivelogs/1_24_1238104578.dbf thread=1 sequence=24
+media recovery complete, elapsed time: 00:00:01
+Finished recover at 17-NOV-26
+
+
+RMAN>

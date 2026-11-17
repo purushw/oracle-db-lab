@@ -1,0 +1,126 @@
+
+1. Verify record counts
+First, establish how much application data currently exists.
+------------------
+SELECT 'PRODUCTS' table_name, COUNT(*) row_count FROM dgdb.products
+UNION ALL
+SELECT 'CUSTOMERS', COUNT(*) FROM dgdb.customers
+UNION ALL
+SELECT 'INVENTORY', COUNT(*) FROM dgdb.inventory
+UNION ALL
+SELECT 'ORDERS', COUNT(*) FROM dgdb.orders
+UNION ALL
+SELECT 'ORDER_ITEMS', COUNT(*) FROM dgdb.order_items
+UNION ALL
+SELECT 'RESERVATIONS', COUNT(*) FROM dgdb.reservations
+UNION ALL
+SELECT 'PAYMENTS', COUNT(*) FROM dgdb.payments
+UNION ALL
+SELECT 'STOCK_MOVEMENTS', COUNT(*) FROM dgdb.stock_movements;
+
+TABLE_NAME	 ROW_COUNT
+--------------- ----------
+PRODUCTS		40
+CUSTOMERS		50
+INVENTORY		40
+ORDERS			12
+ORDER_ITEMS		12
+RESERVATIONS		12
+PAYMENTS		 9
+STOCK_MOVEMENTS 	46
+
+8 rows selected.
+
+----------
+2. Physical stock reconciliation
+Every product's on-hand quantity should match the sum of its stock movements.
+
+SELECT p.sku,
+       i.on_hand_qty,
+       NVL(SUM(sm.quantity_delta), 0) AS ledger_qty
+FROM dgdb.products p
+JOIN dgdb.inventory i ON i.product_id = p.product_id
+LEFT JOIN dgdb.stock_movements sm
+       ON sm.product_id = p.product_id
+GROUP BY p.sku, i.on_hand_qty
+HAVING i.on_hand_qty <> NVL(SUM(sm.quantity_delta), 0)
+ORDER BY p.sku;  
+
+no rows selected
+
+Expected: no rows selected.
+
+Any returned row represents an inventory discrepancy.
+
+3. Reserved stock reconciliation
+Reserved inventory must agree with active checkout and allocated reservations.
+
+SELECT p.sku,
+       i.reserved_qty,
+       NVL(SUM(CASE
+           WHEN r.status IN ('CHECKOUT', 'ALLOCATED')
+           THEN r.quantity ELSE 0
+       END), 0) AS allocation_qty
+FROM dgdb.products p
+JOIN dgdb.inventory i ON i.product_id = p.product_id
+LEFT JOIN dgdb.reservations r
+       ON r.product_id = p.product_id
+GROUP BY p.sku, i.reserved_qty
+HAVING i.reserved_qty <> NVL(SUM(CASE
+           WHEN r.status IN ('CHECKOUT', 'ALLOCATED')
+           THEN r.quantity ELSE 0
+       END), 0)
+ORDER BY p.sku;
+
+no rows selected.
+
+Expected: no rows selected.
+
+This checks stored reservations, not whether a checkout deadline has passed.
+
+4. Order and payment status
+Confirm the existing application transactions have not unexpectedly changed.
+
+SELECT status, COUNT(*)
+FROM dgdb.orders
+GROUP BY status
+ORDER BY status;
+
+STATUS		       COUNT(*)
+-------------------- ----------
+CANCELLED		      1
+EXPIRED 		      1
+FULFILLED		      6
+PAID			        2
+PENDING 		      2
+
+SELECT status, COUNT(*)
+FROM dgdb.payments
+GROUP BY status
+ORDER BY status;
+
+STATUS	       COUNT(*)
+------------ ----------
+FAILED		      1
+SUCCEEDED	      8
+
+
+
+
+SQL> SELECT current_scn FROM v$database;
+
+CURRENT_SCN
+-----------
+    4216256
+
+SQL> SELECT SYSTIMESTAMP AS captured_at, current_scn
+FROM v$database;  2
+
+CAPTURED_AT								    CURRENT_SCN
+--------------------------------------------------------------------------- -----------
+17-NOV-26 11.49.54.989107 AM +00:00						4216261
+
+
+docker inspect oracle-db --format '{{range .Mounts}}{{println .Type .Name .Destination}}{{end}}'
+volume oracle-rman-backups /opt/oracle/backups
+volume oracle-db-data /opt/oracle/oradata
