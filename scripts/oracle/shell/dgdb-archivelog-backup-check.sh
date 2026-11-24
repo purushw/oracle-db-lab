@@ -24,8 +24,9 @@ COLUMN latest_rman_backup FORMAT A19
 
 -- A logical archived log is identified by resetlogs incarnation, redo thread,
 -- and sequence. Multiple V$ARCHIVED_LOG rows can be physical copies of it.
--- This first report lists each logical log with at least one non-deleted copy
--- that has no corresponding record in V$BACKUP_REDOLOG / V$BACKUP_SET.
+-- Include archived-log control-file records even when NAME is NULL or a copy
+-- is marked deleted. RMAN DELETE INPUT can clear/remove those copies after a
+-- successful backup; the RMAN metadata join below decides backup coverage.
 PROMPT Logical archived logs with no RMAN backup-set record
 WITH archived_logs AS (
     SELECT resetlogs_change#,
@@ -35,9 +36,7 @@ WITH archived_logs AS (
            MAX(next_change#) AS next_change#,
            MAX(completion_time) AS latest_copy_time
     FROM v$archived_log
-    WHERE name IS NOT NULL
-      AND archived = 'YES'
-      AND deleted = 'NO'
+    WHERE archived = 'YES'
     GROUP BY resetlogs_change#, thread#, sequence#
 ), rman AS (
     SELECT r.resetlogs_change#,
