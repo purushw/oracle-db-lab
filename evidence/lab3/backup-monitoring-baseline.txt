@@ -1,0 +1,260 @@
+Establish the RMAN monitoring baseline
+
+Using your existing DGDB Oracle container, independently investigate and produce a read-only report identifying:
+- Recent RMAN backup jobs and their statuses.
+- Most recent successful database and archived redo log backups.
+- Archived redo log sequences represented in backup metadata.
+
+
+##################################################################
+# connect as SYSDBA to the CDB root and run:
+# This view covers backup jobs;
+# STATUS distinguishes COMPLETED, COMPLETED WITH WARNINGS, COMPLETED WITH ERRORS, and FAILED
+##################################################################
+SET LINESIZE 180
+SET PAGESIZE 100
+
+COLUMN started FORMAT A19
+COLUMN ended   FORMAT A19
+COLUMN status  FORMAT A23
+COLUMN input_type FORMAT A15
+
+SELECT session_key,
+       TO_CHAR(start_time, 'YYYY-MM-DD HH24:MI:SS') AS started,
+       TO_CHAR(end_time,   'YYYY-MM-DD HH24:MI:SS') AS ended,
+       input_type,
+       status,
+       output_device_type AS device,
+       output_bytes_display AS output_size,
+       time_taken_display AS duration
+FROM v$rman_backup_job_details
+ORDER BY start_time DESC
+FETCH FIRST 20 ROWS ONLY;
+
+
+SESSION_KEY STARTED             ENDED               INPUT_TYPE      STATUS                  DEVICE
+----------- ------------------- ------------------- --------------- ----------------------- -----------------
+OUTPUT_SIZE
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+DURATION
+------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+         23 2026-11-13 12:56:17 2026-11-13 12:56:26 DB FULL         COMPLETED               DISK
+    3.93G
+00:00:09
+
+          1 2026-11-09 15:41:02 2026-11-09 18:59:10 DB FULL         COMPLETED               DISK
+    5.37G
+03:18:08
+
+##################################################################
+# Latest successful full database backup
+##################################################################
+
+SELECT session_key, input_type, status, start_time, end_time,
+       output_device_type, output_bytes_display
+FROM v$rman_backup_subjob_details
+WHERE input_type = 'DB FULL'
+  AND status = 'COMPLETED'
+ORDER BY end_time DESC
+FETCH FIRST 1 ROW ONLY;
+
+SESSION_KEY INPUT_TYPE     STATUS       START_TIM END_TIME  OUTPUT_DEVICE_TYP
+----------- -------------- ------------ --------- --------- -----------------
+OUTPUT_BYTES_DISPLAY
+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+         23 DB FULL        COMPLETED    13-NOV-26 13-NOV-26 DISK
+    3.93G
+
+##################################################################
+# Latest successful archived-redo backup:
+##################################################################
+
+SELECT session_key, input_type, status, start_time, end_time,
+       output_device_type, output_bytes_display
+FROM v$rman_backup_subjob_details
+WHERE input_type = 'ARCHIVELOG'
+  AND status = 'COMPLETED'
+ORDER BY end_time DESC
+FETCH FIRST 1 ROW ONLY; 
+
+no rows selected
+
+##################################################################
+# This tells you which sequences RMAN recorded inside backup sets, with their SCN ranges.
+# 
+##################################################################
+
+SELECT b.recid AS backup_set_key,
+       b.completion_time,
+       r.thread#,
+       r.sequence#,
+       r.first_change#,
+       r.next_change#
+FROM v$backup_redolog r
+JOIN v$backup_set b
+  ON b.set_stamp = r.set_stamp
+ AND b.set_count = r.set_count
+ORDER BY b.completion_time DESC, r.thread#, r.sequence#;
+
+BACKUP_SET_KEY COMPLETIO    THREAD#  SEQUENCE# FIRST_CHANGE# NEXT_CHANGE#
+-------------- --------- ---------- ---------- ------------- ------------
+            21 13-NOV-26          1         14       3381912      3381965
+            17 13-NOV-26          1          1       1935702      2954658
+            17 13-NOV-26          1          2       2954658      2967867
+            17 13-NOV-26          1          3       2967867      2990854
+            17 13-NOV-26          1          4       2990854      2990895
+            17 13-NOV-26          1          5       2990895      3008828
+            17 13-NOV-26          1          6       3008828      3008877
+            17 13-NOV-26          1          7       3008877      3012914
+            17 13-NOV-26          1          8       3012914      3080782
+            17 13-NOV-26          1          9       3080782      3138079
+            17 13-NOV-26          1         10       3138079      3195057
+            17 13-NOV-26          1         11       3195057      3275740
+            17 13-NOV-26          1         12       3275740      3346717
+            17 13-NOV-26          1         13       3346717      3381912
+            12 09-NOV-26          1          6       3008828      3008877
+             8 09-NOV-26          1          1       1935702      2954658
+             8 09-NOV-26          1          2       2954658      2967867
+             8 09-NOV-26          1          3       2967867      2990854
+             8 09-NOV-26          1          4       2990854      2990895
+             8 09-NOV-26          1          5       2990895      3008828
+             5 09-NOV-26          1          4       2990854      2990895
+             1 09-NOV-26          1          1       1935702      2954658
+             1 09-NOV-26          1          2       2954658      2967867
+             1 09-NOV-26          1          3       2967867      2990854
+
+24 rows selected.
+
+# This shows the archived-log records, their file names, status, and SCN ranges:
+# STATUS = 'A' means the control-file record marks that copy available; 
+# this query does not read the file or prove it was backed up - Use V$BACKUP_REDOLOG for sequences represented in backup sets.
+##################################################################
+SET LINESIZE 220
+SET PAGESIZE 100
+COLUMN name FORMAT A75
+COLUMN status FORMAT A6
+
+SELECT thread#,
+       sequence#,
+       resetlogs_change#,
+       first_change#,
+       next_change#,
+       status,
+       deleted,
+       backup_count,
+       completion_time,
+       name
+FROM v$archived_log
+WHERE name IS NOT NULL
+ORDER BY resetlogs_change#, thread#, sequence#, recid; 
+
+   THREAD#  SEQUENCE# RESETLOGS_CHANGE# FIRST_CHANGE# NEXT_CHANGE# STATUS DEL BACKUP_COUNT COMPLETIO NAME
+---------- ---------- ----------------- ------------- ------------ ------ --- ------------ --------- ---------------------------------------------------------------------------
+         1          1           1935702       1935702      2954658 A      NO             0 06-NOV-26 /opt/oracle/product/26ai/dbhomeFree/dbs/arch1_1_1238104578.dbf
+         1          1           1935702       1935702      2954658 A      NO             3 09-NOV-26 /opt/oracle/oradata/archivelogs/arch1_1_1238104578.dbf
+         1          2           1935702       2954658      2967867 A      NO             3 06-NOV-26 /opt/oracle/oradata/archivelogs/1_2_1238104578.dbf
+         1          3           1935702       2967867      2990854 A      NO             3 09-NOV-26 /opt/oracle/oradata/archivelogs/1_3_1238104578.dbf
+         1          4           1935702       2990854      2990895 A      NO             3 09-NOV-26 /opt/oracle/oradata/archivelogs/1_4_1238104578.dbf
+         1          5           1935702       2990895      3008828 A      NO             2 09-NOV-26 /opt/oracle/oradata/archivelogs/1_5_1238104578.dbf
+         1          6           1935702       3008828      3008877 A      NO             2 09-NOV-26 /opt/oracle/oradata/archivelogs/1_6_1238104578.dbf
+         1          7           1935702       3008877      3012914 A      NO             1 09-NOV-26 /opt/oracle/oradata/archivelogs/1_7_1238104578.dbf
+         1          8           1935702       3012914      3080782 A      NO             1 09-NOV-26 /opt/oracle/oradata/archivelogs/1_8_1238104578.dbf
+         1          9           1935702       3080782      3138079 A      NO             1 10-NOV-26 /opt/oracle/oradata/archivelogs/1_9_1238104578.dbf
+         1         10           1935702       3138079      3195057 A      NO             1 10-NOV-26 /opt/oracle/oradata/archivelogs/1_10_1238104578.dbf
+         1         11           1935702       3195057      3275740 A      NO             1 12-NOV-26 /opt/oracle/oradata/archivelogs/1_11_1238104578.dbf
+         1         12           1935702       3275740      3346717 A      NO             1 13-NOV-26 /opt/oracle/oradata/archivelogs/1_12_1238104578.dbf
+         1         13           1935702       3346717      3381912 A      NO             1 13-NOV-26 /opt/oracle/oradata/archivelogs/1_13_1238104578.dbf
+         1         14           1935702       3381912      3381965 A      NO             1 13-NOV-26 /opt/oracle/oradata/archivelogs/1_14_1238104578.dbf
+         1         15           1935702       3381965      3445076 A      NO             0 13-NOV-26 /opt/oracle/oradata/archivelogs/1_15_1238104578.dbf
+         1         16           1935702       3445076      3512634 A      NO             0 14-NOV-26 /opt/oracle/oradata/archivelogs/1_16_1238104578.dbf
+         1         17           1935702       3512634      3572407 A      NO             0 14-NOV-26 /opt/oracle/oradata/archivelogs/1_17_1238104578.dbf
+         1         18           1935702       3572407      3647068 A      NO             0 14-NOV-26 /opt/oracle/oradata/archivelogs/1_18_1238104578.dbf
+         1         19           1935702       3647068      3733427 A      NO             0 15-NOV-26 /opt/oracle/oradata/archivelogs/1_19_1238104578.dbf
+         1         20           1935702       3733427      3807311 A      NO             0 15-NOV-26 /opt/oracle/oradata/archivelogs/1_20_1238104578.dbf
+         1         21           1935702       3807311      3871540 A      NO             0 15-NOV-26 /opt/oracle/oradata/archivelogs/1_21_1238104578.dbf
+         1         22           1935702       3871540      3944879 A      NO             0 15-NOV-26 /opt/oracle/oradata/archivelogs/1_22_1238104578.dbf
+         1         23           1935702       3944879      4020606 A      NO             0 16-NOV-26 /opt/oracle/oradata/archivelogs/1_23_1238104578.dbf
+         1         24           1935702       4020606      4086675 A      NO             0 16-NOV-26 /opt/oracle/oradata/archivelogs/1_24_1238104578.dbf
+         1         25           1935702       4086675      4136280 A      NO             0 16-NOV-26 /opt/oracle/oradata/archivelogs/1_25_1238104578.dbf
+         1         26           1935702       4136280      4194601 A      NO             0 17-NOV-26 /opt/oracle/oradata/archivelogs/1_26_1238104578.dbf
+         1         27           1935702       4194601      4234321 A      NO             0 17-NOV-26 /opt/oracle/oradata/archivelogs/1_27_1238104578.dbf
+
+28 rows selected.
+
+
+# 
+##################################################################
+# these are the files created after we recovered the datafile in lab 2
+# 
+##################################################################
+SET LINESIZE 220
+SET PAGESIZE 100
+COLUMN name FORMAT A75
+COLUMN status FORMAT A6
+
+SELECT thread#,
+       sequence#,
+       resetlogs_change#,
+       first_change#,
+       next_change#,
+       status,
+       deleted,
+       backup_count,
+       completion_time,
+       name
+FROM v$archived_log
+WHERE name IS NOT NULL AND thread# = 1 AND sequence# >= 14
+ORDER BY resetlogs_change#, thread#, sequence#, recid;
+
+THREAD#  SEQUENCE# RESETLOGS_CHANGE# FIRST_CHANGE# NEXT_CHANGE# STATUS DEL BACKUP_COUNT COMPLETIO NAME
+---------- ---------- ----------------- ------------- ------------ ------ --- ------------ --------- ---------------------------------------------------------------------------
+         1         14           1935702       3381912      3381965 A      NO             1 13-NOV-26 /opt/oracle/oradata/archivelogs/1_14_1238104578.dbf
+         1         15           1935702       3381965      3445076 A      NO             0 13-NOV-26 /opt/oracle/oradata/archivelogs/1_15_1238104578.dbf
+         1         16           1935702       3445076      3512634 A      NO             0 14-NOV-26 /opt/oracle/oradata/archivelogs/1_16_1238104578.dbf
+         1         17           1935702       3512634      3572407 A      NO             0 14-NOV-26 /opt/oracle/oradata/archivelogs/1_17_1238104578.dbf
+         1         18           1935702       3572407      3647068 A      NO             0 14-NOV-26 /opt/oracle/oradata/archivelogs/1_18_1238104578.dbf
+         1         19           1935702       3647068      3733427 A      NO             0 15-NOV-26 /opt/oracle/oradata/archivelogs/1_19_1238104578.dbf
+         1         20           1935702       3733427      3807311 A      NO             0 15-NOV-26 /opt/oracle/oradata/archivelogs/1_20_1238104578.dbf
+         1         21           1935702       3807311      3871540 A      NO             0 15-NOV-26 /opt/oracle/oradata/archivelogs/1_21_1238104578.dbf
+         1         22           1935702       3871540      3944879 A      NO             0 15-NOV-26 /opt/oracle/oradata/archivelogs/1_22_1238104578.dbf
+         1         23           1935702       3944879      4020606 A      NO             0 16-NOV-26 /opt/oracle/oradata/archivelogs/1_23_1238104578.dbf
+         1         24           1935702       4020606      4086675 A      NO             0 16-NOV-26 /opt/oracle/oradata/archivelogs/1_24_1238104578.dbf
+         1         25           1935702       4086675      4136280 A      NO             0 16-NOV-26 /opt/oracle/oradata/archivelogs/1_25_1238104578.dbf
+         1         26           1935702       4136280      4194601 A      NO             0 17-NOV-26 /opt/oracle/oradata/archivelogs/1_26_1238104578.dbf
+         1         27           1935702       4194601      4234321 A      NO             0 17-NOV-26 /opt/oracle/oradata/archivelogs/1_27_1238104578.dbf
+
+14 rows selected.
+
+
+# starting with one query that lists the unbacked sequences, including their completion timestamps
+WITH archived_logs AS (
+    SELECT thread#,
+           sequence#,
+           completion_time,
+           backup_count
+    FROM v$archived_log
+    WHERE sequence# > 14 -- this avoids counting the duplicate copy of sequence 1, but im not sure how practical this is 
+)
+SELECT *
+FROM archived_logs
+WHERE backup_count = 0;
+
+
+
+
+WITH rman_sequences AS (
+    SELECT b.recid AS backup_set_key,
+        b.completion_time,
+        r.thread#,
+        r.sequence#,
+        r.first_change#,
+        r.next_change#
+    FROM v$backup_redolog r
+    JOIN v$backup_set b
+    ON b.set_stamp = r.set_stamp
+    AND b.set_count = r.set_count
+    ORDER BY b.completion_time DESC, r.thread#, r.sequence#
+)
+SELECT *
+FROM rman_sequences;
+
