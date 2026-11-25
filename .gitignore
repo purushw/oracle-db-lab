@@ -33,3 +33,6 @@ ewallet.p12
 # Personal lab notes
 notes.md
 
+# macOS Finder metadata
+.DS_Store
+
