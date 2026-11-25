@@ -1,21 +1,26 @@
 #!/usr/bin/env bash
 # Read-only cross-check of archived redo copies and logical sequences against
 # RMAN backup-set records in the current database control file.
+# Exit 0 = OK; 2 = CRITICAL (unbacked for over 30 minutes); 3 = UNKNOWN/ERROR.
 set -euo pipefail
 
 container_name="${DGDB_CONTAINER_NAME:-oracle-db}"
 
 if ! command -v docker >/dev/null 2>&1; then
-  printf 'docker was not found in PATH\n' >&2
-  exit 127
+  printf 'UNKNOWN: docker was not found in PATH\n' >&2
+  exit 3
 fi
 
-exec docker exec -i "$container_name" sqlplus -s '/ as sysdba' <<'SQL'
-WHENEVER SQLERROR EXIT SQL.SQLCODE
+report_file=$(mktemp) || { printf 'UNKNOWN: cannot create report file\n' >&2; exit 3; }
+trap 'rm -f "$report_file"' EXIT
+if docker exec -i "$container_name" sqlplus -s '/ as sysdba' >"$report_file" 2>&1 <<'SQL'; then
+WHENEVER SQLERROR EXIT 3 ROLLBACK
+WHENEVER OSERROR EXIT 3 ROLLBACK
 SET PAGESIZE 200
 SET LINESIZE 240
 SET TRIMSPOOL ON
 SET TAB OFF
+SET SERVEROUTPUT ON
 COLUMN backup_state FORMAT A24
 COLUMN archived_status FORMAT A6
 COLUMN deleted FORMAT A7
@@ -34,7 +39,7 @@ WITH archived_logs AS (
            sequence#,
            MIN(first_change#) AS first_change#,
            MAX(next_change#) AS next_change#,
-           MAX(completion_time) AS latest_copy_time
+           MIN(completion_time) AS first_archived_at
     FROM v$archived_log
     WHERE archived = 'YES'
     GROUP BY resetlogs_change#, thread#, sequence#
@@ -55,7 +60,7 @@ SELECT a.resetlogs_change#,
        a.sequence#,
        a.first_change#,
        a.next_change#,
-       TO_CHAR(a.latest_copy_time, 'YYYY-MM-DD HH24:MI:SS') AS latest_copy,
+       TO_CHAR(a.first_archived_at, 'YYYY-MM-DD HH24:MI:SS') AS first_archived_at,
        NVL(r.backup_set_records, 0) AS rman_backup_records,
        TO_CHAR(r.latest_rman_backup, 'YYYY-MM-DD HH24:MI:SS') AS latest_rman_backup
 FROM archived_logs a
@@ -104,5 +109,54 @@ LEFT JOIN rman r
 WHERE a.name IS NOT NULL
 ORDER BY a.resetlogs_change#, a.thread#, a.sequence#, a.recid;
 
-EXIT SUCCESS
+-- Age is measured from the first archived copy of each logical log. Duplicate
+-- copies and deleted/NULL-NAME records remain in scope. Backup-piece access
+-- is outside this metadata-only check and requires separate validation.
+VARIABLE monitor_exit NUMBER
+DECLARE
+    l_overdue_count NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO l_overdue_count
+    FROM (
+        SELECT resetlogs_change#, thread#, sequence#,
+               MIN(completion_time) AS first_archived_at
+        FROM v$archived_log
+        WHERE archived = 'YES'
+        GROUP BY resetlogs_change#, thread#, sequence#
+    ) a
+    WHERE a.first_archived_at < SYSDATE - (30 / 1440)
+      AND NOT EXISTS (
+          SELECT 1
+          FROM v$backup_redolog r
+          JOIN v$backup_set b
+            ON b.set_stamp = r.set_stamp
+           AND b.set_count = r.set_count
+          WHERE r.resetlogs_change# = a.resetlogs_change#
+            AND r.thread# = a.thread#
+            AND r.sequence# = a.sequence#
+      );
+
+    IF l_overdue_count > 0 THEN
+        :monitor_exit := 2;
+        DBMS_OUTPUT.PUT_LINE('CRITICAL: ' || l_overdue_count ||
+                             ' archived redo sequence(s) lack RMAN backup evidence for over 30 minutes');
+    ELSE
+        :monitor_exit := 0;
+        DBMS_OUTPUT.PUT_LINE('OK: no archived redo sequence exceeds the 30-minute backup window');
+    END IF;
+    DBMS_OUTPUT.PUT_LINE('DGDB_ARCHIVELOG_RESULT=' || :monitor_exit);
+END;
+/
+EXIT :monitor_exit
 SQL
+  docker_exit=0
+else
+  docker_exit=$?
+fi
+cat "$report_file"
+marker=$(awk '/^DGDB_ARCHIVELOG_RESULT=[02]$/ { split($0, parts, "="); result=parts[2]; count++ } END { if (count == 1) print result }' "$report_file")
+if [[ -z $marker || $docker_exit != "$marker" ]]; then
+  printf 'UNKNOWN: Docker or SQL*Plus did not complete a valid health assessment (exit %d)\n' "$docker_exit" >&2
+  exit 3
+fi
+exit "$marker"
